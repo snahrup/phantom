@@ -55,6 +55,17 @@ export class EvolutionEngine {
 		return this.llmJudgesEnabled;
 	}
 
+	/** Memory consolidation runs outside afterSession() but still needs to respect the daily cap. */
+	isWithinCostCap(): boolean {
+		return !this.isDailyCostCapReached();
+	}
+
+	/** Consolidation judge costs happen outside the evolution pipeline but count toward the daily cap. */
+	trackExternalJudgeCost(cost: { totalUsd: number }): void {
+		this.resetDailyCostIfNewDay();
+		this.dailyCostUsd += cost.totalUsd;
+	}
+
 	getEvolutionConfig(): EvolutionConfig {
 		return this.config;
 	}
@@ -77,6 +88,7 @@ export class EvolutionEngine {
 			observations = result.observations;
 			if (result.judgeCost) {
 				addCost(judgeCosts.observation_extraction, result.judgeCost);
+				this.incrementDailyCost(result.judgeCost.totalUsd);
 			}
 		} else {
 			observations = extractObservations(session);
@@ -111,6 +123,7 @@ export class EvolutionEngine {
 			const judgeResult = await validateAllWithJudges(deltas, this.checker, goldenSuite, this.config, currentConfig);
 			validationResults = judgeResult.results;
 			mergeCosts(judgeCosts, judgeResult.judgeCosts);
+			this.incrementDailyCost(totalCostFromJudgeCosts(judgeResult.judgeCosts));
 		} else {
 			validationResults = validateAll(deltas, this.checker, goldenSuite, this.config);
 		}
@@ -155,6 +168,7 @@ export class EvolutionEngine {
 				judgeCosts.quality_assessment.totalUsd += qualityResult.costUsd;
 				judgeCosts.quality_assessment.totalInputTokens += qualityResult.inputTokens;
 				judgeCosts.quality_assessment.totalOutputTokens += qualityResult.outputTokens;
+				this.incrementDailyCost(qualityResult.costUsd);
 
 				if (qualityResult.data.regression_signal) {
 					console.warn(
@@ -193,10 +207,9 @@ export class EvolutionEngine {
 			this.rollback(this.getCurrentVersion() - 1);
 		}
 
-		// Record judge costs and update daily tracking
+		// Record judge costs to persistent metrics (daily tracking already done incrementally above)
 		if (this.llmJudgesEnabled) {
 			this.recordJudgeCosts(judgeCosts);
-			this.trackDailyCost(judgeCosts);
 		}
 
 		// Enforce golden suite cap
@@ -269,11 +282,9 @@ export class EvolutionEngine {
 		return false;
 	}
 
-	private trackDailyCost(costs: JudgeCosts): void {
+	private incrementDailyCost(usd: number): void {
 		this.resetDailyCostIfNewDay();
-		for (const key of Object.keys(costs) as Array<keyof JudgeCosts>) {
-			this.dailyCostUsd += costs[key].totalUsd;
-		}
+		this.dailyCostUsd += usd;
 	}
 
 	private pruneGoldenSuite(): void {
@@ -324,4 +335,12 @@ function mergeCosts(target: JudgeCosts, source: JudgeCosts): void {
 	for (const key of Object.keys(source) as Array<keyof JudgeCosts>) {
 		addCost(target[key], source[key]);
 	}
+}
+
+function totalCostFromJudgeCosts(costs: JudgeCosts): number {
+	let total = 0;
+	for (const key of Object.keys(costs) as Array<keyof JudgeCosts>) {
+		total += costs[key].totalUsd;
+	}
+	return total;
 }

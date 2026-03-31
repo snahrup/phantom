@@ -492,12 +492,15 @@ async function main(): Promise<void> {
 				outcome: response.text.startsWith("Error:") ? "failure" : "success",
 			};
 
-			const useLLMConsolidation = evolution?.usesLLMJudges() ?? false;
+			const useLLMConsolidation = evolution?.usesLLMJudges() && evolution.isWithinCostCap();
 			if (useLLMConsolidation) {
 				const evolvedConfig = evolution?.getConfig();
 				const existingFacts = evolvedConfig ? `${evolvedConfig.userProfile}\n${evolvedConfig.domainKnowledge}` : "";
 				consolidateSessionWithLLM(memory, sessionData, existingFacts)
-					.then(({ result }) => {
+					.then(({ result, judgeCost }) => {
+						if (judgeCost) {
+							evolution?.trackExternalJudgeCost(judgeCost);
+						}
 						if (result.episodesCreated > 0 || result.factsExtracted > 0) {
 							console.log(
 								`[memory] Consolidated (LLM): ${result.episodesCreated} episodes, ` +
