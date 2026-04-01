@@ -97,4 +97,17 @@ export const MIGRATIONS: string[] = [
 		expires_at TEXT NOT NULL,
 		completed_at TEXT
 	)`,
+
+	`CREATE TABLE IF NOT EXISTS ui_sessions (
+		token TEXT PRIMARY KEY,
+		created_at INTEGER NOT NULL,
+		expires_at INTEGER NOT NULL
+	)`,
+
+	`CREATE TABLE IF NOT EXISTS ui_magic_links (
+		token TEXT PRIMARY KEY,
+		session_token TEXT NOT NULL,
+		expires_at INTEGER NOT NULL,
+		used INTEGER NOT NULL DEFAULT 0
+	)`,
 ];

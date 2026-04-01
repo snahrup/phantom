@@ -1,4 +1,6 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
+import { afterEach, beforeAll, describe, expect, test } from "bun:test";
+import { runMigrations } from "../../db/migrate.ts";
 import {
 	consumeMagicLink,
 	createSession,
@@ -6,7 +8,15 @@ import {
 	getSessionCount,
 	isValidSession,
 	revokeAllSessions,
+	setSessionDb,
 } from "../session.ts";
+
+beforeAll(() => {
+	const db = new Database(":memory:");
+	db.run("PRAGMA journal_mode = WAL");
+	runMigrations(db);
+	setSessionDb(db);
+});
 
 afterEach(() => {
 	revokeAllSessions();

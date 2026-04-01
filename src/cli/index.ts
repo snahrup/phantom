@@ -3,6 +3,7 @@ const COMMANDS: Record<string, string> = {
 	init: "Initialize a new Phantom configuration",
 	doctor: "Check system health and diagnose issues",
 	token: "Manage MCP authentication tokens",
+	login: "Generate a magic link to sign into the web dashboard",
 	status: "Show quick status of the running Phantom",
 };
 
@@ -55,6 +56,11 @@ export async function runCli(argv: string[]): Promise<void> {
 		case "token": {
 			const { runToken } = await import("./token.ts");
 			await runToken(commandArgs);
+			break;
+		}
+		case "login": {
+			const { runLogin } = await import("./login.ts");
+			await runLogin(commandArgs);
 			break;
 		}
 		case "status": {

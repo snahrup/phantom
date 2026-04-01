@@ -1,10 +1,19 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
+import { afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
+import { runMigrations } from "../../db/migrate.ts";
 import { handleUiRequest, setPublicDir } from "../serve.ts";
-import { createSession, revokeAllSessions } from "../session.ts";
+import { createSession, revokeAllSessions, setSessionDb } from "../session.ts";
 
 // Point at our actual public dir for file serving tests
 setPublicDir(resolve(import.meta.dir, "../../../public"));
+
+beforeAll(() => {
+	const db = new Database(":memory:");
+	db.run("PRAGMA journal_mode = WAL");
+	runMigrations(db);
+	setSessionDb(db);
+});
 
 afterEach(() => {
 	revokeAllSessions();

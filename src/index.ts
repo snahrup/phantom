@@ -51,6 +51,7 @@ import { createSchedulerToolServer } from "./scheduler/tool.ts";
 import { getSecretRequest } from "./secrets/store.ts";
 import { createSecretToolServer } from "./secrets/tools.ts";
 import { setPublicDir, setSecretSavedCallback, setSecretsDb } from "./ui/serve.ts";
+import { createSession, setSessionDb } from "./ui/session.ts";
 import { createWebUiToolServer } from "./ui/tools.ts";
 
 async function main(): Promise<void> {
@@ -80,6 +81,7 @@ async function main(): Promise<void> {
 	const db = getDatabase();
 	runMigrations(db);
 	setSecretsDb(db);
+	setSessionDb(db);
 	console.log("[phantom] Database ready");
 
 	// Seed working memory file if it does not exist yet
@@ -658,6 +660,16 @@ async function main(): Promise<void> {
 			console.warn("[onboarding] No owner, default user, or channel configured, skipping intro message");
 		}
 	}
+
+	// Auto-generate a dashboard login link so the operator never has to type a token
+	const baseUrl = config.public_url ?? `http://localhost:${config.port}`;
+	const { magicToken } = createSession();
+	const dashboardUrl = `${baseUrl}/ui/login?magic=${magicToken}`;
+	console.log(`[phantom] Dashboard: ${dashboardUrl}`);
+
+	// Write the magic URL to a known file so the launcher can open it
+	const dashboardUrlPath = join(process.cwd(), "data", ".dashboard-url");
+	writeFileSync(dashboardUrlPath, dashboardUrl, "utf-8");
 
 	console.log(`[phantom] ${config.name} is ready.`);
 }

@@ -12,3 +12,12 @@ local/
 .DS_Store
 bun.lockb
 HANDOFFS.md
+
+# Codebase Mapper (auto-generated)
+CODEBASE.md
+CODEBASE.html
+.codebase-map-dirty
+
+# OpenMemory - IDE/Assistant specific rules
+.windsurf\rules\openmemory.md
+CLAUDE.md

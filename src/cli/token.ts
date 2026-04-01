@@ -3,6 +3,7 @@ import { parseArgs } from "node:util";
 import YAML from "yaml";
 import { hashTokenSync } from "../mcp/config.ts";
 import type { McpConfig, McpScope } from "../mcp/types.ts";
+import { saveAdminToken } from "./credentials.ts";
 
 const MCP_CONFIG_PATH = "config/mcp.yaml";
 
@@ -68,7 +69,13 @@ function runCreate(args: string[]): void {
 	config.tokens.push({ name: values.client, hash, scopes });
 	saveMcpConfig(config);
 
-	console.log(`Token created for '${values.client}' with scope '${scopeStr}'`);
+	// Persist admin-scoped tokens locally so phantom login works without --token
+	if (scopes.includes("admin")) {
+		saveAdminToken(token);
+		console.log(`Token created for '${values.client}' with scope '${scopeStr}' (saved to data/.phantom-credentials)`);
+	} else {
+		console.log(`Token created for '${values.client}' with scope '${scopeStr}'`);
+	}
 	console.log(`\nToken (save this, it will not be shown again):\n  ${token}`);
 	console.log(`\nUse with curl:\n  curl -H "Authorization: Bearer ${token}" https://your-phantom/mcp`);
 }
